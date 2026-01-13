@@ -8,6 +8,7 @@ A collection of hands-on skills for students to explore and practice when learni
 
 | Skill | Purpose |
 |-------|---------|
+| **frontend-engineer** | Expert frontend engineer for React 19, Next.js 15+, shadcn/ui, Tailwind CSS, and Vercel deployment. Includes Context7 MCP integration for up-to-date documentation, modern UI/UX standards (WCAG 2.1 AA), and starter templates |
 | **browsing-with-playwright** | Browser automation using Playwright MCP. Navigate websites, fill forms, click elements, take screenshots, and extract data. Use when tasks require web browsing, form submission, web scraping, UI testing, or any browser interaction |
 | **fetch-library-docs** | Token-efficient library documentation fetcher for various programming languages, providing code examples, API references, and best practices. |
 | **doc-coauthoring** | Guide users through a structured workflow for co-authoring documentation including proposals, technical specs, decision docs, and similar structured content |
