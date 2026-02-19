@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from typing import Optional, List
 from datetime import datetime
 from contextlib import asynccontextmanager
+from config import get_settings
+from database import create_db_and_tables, get_session
 import os
 import logging
 import time
@@ -20,9 +22,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/todo_db")
-logger.info(f"Connecting to database: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'local'}")
-engine = create_engine(DATABASE_URL, echo=True)
+# DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/todo_db")
+
+# engine = create_engine(get_settings().database_url, echo=True)
 
 
 # Todo Model
@@ -38,17 +40,10 @@ class Todo(SQLModel, table=True):
     ending_note: Optional[str] = None
 
 
-# Create tables
-def create_db_and_tables():
-    logger.info("Creating database tables...")
-    SQLModel.metadata.create_all(engine, checkfirst=True)
-    logger.info("Database tables created/verified successfully")
 
 
-# Dependency to get database session
-def get_session():
-    with Session(engine) as session:
-        yield session
+
+
 
 
 # Request/Response models

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from sqlmodel import SQLModel, Field , create_engine, Session, select
 from dotenv import load_dotenv
+from database import create_db_and_tables
 import os
 # Load environment variables from .env file
 load_dotenv()
