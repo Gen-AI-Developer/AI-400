@@ -4,15 +4,16 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus,
   Trash2,
-  Zap,
+  Leaf,
   Clock,
-  Activity,
   CheckCheck,
   ListTodo,
   LayoutList,
   Server,
   WifiOff,
   Loader2,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,78 +44,64 @@ interface LocalMeta {
 }
 
 interface Todo {
-  id: string;        // string version of backend id
+  id: string;
   backendId: number;
   task: string;
   completed: boolean;
   priority: Priority;
 }
 
-// ─── Priority config ──────────────────────────────────────────────────────────
+// ─── Priority config (earthy tones) ──────────────────────────────────────────
 
 const P = {
-  CRITICAL: {
-    bar:   "#f87171",
-    badge: { color: "#f87171", border: "rgba(248,113,113,0.28)", bg: "rgba(248,113,113,0.08)" },
-    dot:   { bg: "#f87171", glow: "0 0 7px #f87171" },
-    card:  { hoverBorder: "rgba(248,113,113,0.32)", hoverShadow: "0 0 22px rgba(248,113,113,0.1)" },
-  },
-  HIGH: {
-    bar:   "#fb923c",
-    badge: { color: "#fb923c", border: "rgba(251,146,60,0.28)",  bg: "rgba(251,146,60,0.08)"  },
-    dot:   { bg: "#fb923c", glow: "0 0 7px #fb923c" },
-    card:  { hoverBorder: "rgba(251,146,60,0.32)",  hoverShadow: "0 0 22px rgba(251,146,60,0.1)"  },
-  },
-  MEDIUM: {
-    bar:   "#22d3ee",
-    badge: { color: "#22d3ee", border: "rgba(34,211,238,0.28)",  bg: "rgba(34,211,238,0.08)"  },
-    dot:   { bg: "#22d3ee", glow: "0 0 7px #22d3ee" },
-    card:  { hoverBorder: "rgba(34,211,238,0.32)",  hoverShadow: "0 0 22px rgba(34,211,238,0.1)"  },
-  },
-  LOW: {
-    bar:   "#34d399",
-    badge: { color: "#34d399", border: "rgba(52,211,153,0.28)",  bg: "rgba(52,211,153,0.08)"  },
-    dot:   { bg: "#34d399", glow: "0 0 7px #34d399" },
-    card:  { hoverBorder: "rgba(52,211,153,0.32)",  hoverShadow: "0 0 22px rgba(52,211,153,0.1)"  },
-  },
-} satisfies Record<Priority, {
-  bar: string;
-  badge: { color: string; border: string; bg: string };
-  dot:   { bg: string; glow: string };
-  card:  { hoverBorder: string; hoverShadow: string };
-}>;
+  CRITICAL: { label: "Urgent",  color: "var(--color-destructive)", bgClass: "bg-destructive/10", borderClass: "border-destructive/20" },
+  HIGH:     { label: "High",    color: "oklch(0.6 0.12 55)",       bgClass: "bg-amber-500/10",    borderClass: "border-amber-500/20" },
+  MEDIUM:   { label: "Medium",  color: "var(--color-primary)",     bgClass: "bg-primary/10",      borderClass: "border-primary/20" },
+  LOW:      { label: "Low",     color: "oklch(0.6 0.08 150)",      bgClass: "bg-emerald-600/10",  borderClass: "border-emerald-600/20" },
+} satisfies Record<Priority, { label: string; color: string; bgClass: string; borderClass: string }>;
 
 const DEFAULT_META: LocalMeta = { completed: false, priority: "MEDIUM" };
 
+// ─── ThemeToggle ──────────────────────────────────────────────────────────────
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    setDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-muted"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {dark ? <Sun className="h-4 w-4 text-accent" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+    </button>
+  );
+}
+
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
-function StatCard({
-  label, value, color, borderColor, shadowColor, icon,
-}: {
-  label: string; value: number; color: string;
-  borderColor: string; shadowColor: string; icon: React.ReactNode;
-}) {
+function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
-    <div
-      className="relative rounded p-4 text-center transition-all duration-300"
-      style={{
-        background: "rgba(7,8,15,0.9)",
-        border: `1px solid ${borderColor}`,
-        boxShadow: `0 0 24px ${shadowColor}`,
-      }}
-    >
-      <div className="mb-1 flex justify-center opacity-40">{icon}</div>
+    <div className="rounded-lg border border-border bg-card p-4 text-center transition-colors">
+      <div className="mb-1.5 flex justify-center text-muted-foreground">{icon}</div>
       <div
-        className="mb-1 tabular-nums text-3xl font-black tracking-tight"
-        style={{
-          fontFamily: "var(--font-orbitron)",
-          color,
-          textShadow: `0 0 10px ${color}cc, 0 0 30px ${color}55`,
-        }}
+        className="mb-0.5 text-2xl font-bold tracking-tight text-foreground"
+        style={{ fontFamily: "var(--font-fraunces)" }}
       >
-        {String(value).padStart(2, "0")}
+        {value}
       </div>
-      <div className="text-[9px] tracking-[0.3em] text-muted-foreground">{label}</div>
+      <div className="text-xs font-medium tracking-wide text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -123,24 +110,19 @@ function StatCard({
 
 function ApiStatusBadge({ status }: { status: ApiStatus }) {
   const cfg = {
-    connecting: { color: "#fb923c", dot: "bg-orange-400",  shadow: "0 0 6px #fb923c", label: "CONNECTING" },
-    online:     { color: "#34d399", dot: "bg-emerald-400", shadow: "0 0 6px #34d399", label: "API ONLINE"  },
-    offline:    { color: "#f87171", dot: "bg-red-400",     shadow: "0 0 6px #f87171", label: "API OFFLINE" },
+    connecting: { dotClass: "bg-amber-500",   labelClass: "text-amber-600 dark:text-amber-400",   label: "Connecting" },
+    online:     { dotClass: "bg-emerald-500", labelClass: "text-emerald-600 dark:text-emerald-400", label: "Online" },
+    offline:    { dotClass: "bg-red-500",     labelClass: "text-red-600 dark:text-red-400",         label: "Offline" },
   }[status];
 
   return (
     <div className="flex items-center gap-1.5">
       {status === "connecting" ? (
-        <Loader2 className="h-2.5 w-2.5 animate-spin" style={{ color: cfg.color }} />
+        <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
       ) : (
-        <span
-          className={cn("h-2 w-2 rounded-full", status === "online" ? "animate-pulse-dot" : "", cfg.dot)}
-          style={{ boxShadow: cfg.shadow }}
-        />
+        <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dotClass)} />
       )}
-      <span className="text-[9px] tracking-[0.25em]" style={{ color: cfg.color }}>
-        {cfg.label}
-      </span>
+      <span className={cn("text-xs font-medium", cfg.labelClass)}>{cfg.label}</span>
     </div>
   );
 }
@@ -153,12 +135,8 @@ function LoadingSkeleton() {
       {[...Array(4)].map((_, i) => (
         <div
           key={i}
-          className="h-12 animate-pulse rounded"
-          style={{
-            background: "rgba(0,217,255,0.04)",
-            border: "1px solid rgba(0,217,255,0.08)",
-            animationDelay: `${i * 80}ms`,
-          }}
+          className="h-14 animate-pulse rounded-lg border border-border bg-muted/50"
+          style={{ animationDelay: `${i * 80}ms` }}
         />
       ))}
     </div>
@@ -183,7 +161,7 @@ export default function TodoApp() {
     const tick = () =>
       setClock(
         new Date().toLocaleTimeString("en-US", {
-          hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hour12: true, hour: "numeric", minute: "2-digit",
         })
       );
     tick();
@@ -191,7 +169,7 @@ export default function TodoApp() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Initial fetch from backend ────────────────────────────────────────────
+  // ── Initial fetch ─────────────────────────────────────────────────────────
   useEffect(() => {
     fetchTodos()
       .then((todos) => {
@@ -209,7 +187,7 @@ export default function TodoApp() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Merge backend + local meta → display todos ────────────────────────────
+  // ── Merge backend + local meta ──────────────────────────────────────────
   const todos: Todo[] = backendTodos.map((bt) => {
     const meta = localMeta[String(bt.id)] ?? DEFAULT_META;
     return { id: String(bt.id), backendId: bt.id, task: bt.task, ...meta };
@@ -245,7 +223,7 @@ export default function TodoApp() {
     }
   }, [input, priority]);
 
-  // ── Toggle completed (local only — backend has no completed field) ─────────
+  // ── Toggle completed ──────────────────────────────────────────────────────
   const toggleTodo = (id: string) =>
     setLocalMeta((prev) => ({
       ...prev,
@@ -254,7 +232,6 @@ export default function TodoApp() {
 
   // ── Delete todo ───────────────────────────────────────────────────────────
   const deleteTodo = async (id: string, backendId: number) => {
-    // Optimistic: remove from UI immediately
     setBackendTodos((prev) => prev.filter((t) => t.id !== backendId));
     setLocalMeta((prev) => { const n = { ...prev }; delete n[id]; return n; });
 
@@ -268,152 +245,107 @@ export default function TodoApp() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-background grid-bg relative overflow-hidden scanline-container">
+    <div className="min-h-screen bg-background leaf-bg">
+      <div className="mx-auto max-w-2xl px-4 py-12">
 
-      {/* Ambient glow blobs */}
-      <div className="pointer-events-none absolute -left-52 -top-52 h-[600px] w-[600px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(0,217,255,0.045) 0%, transparent 68%)" }} />
-      <div className="pointer-events-none absolute -bottom-52 -right-52 h-[600px] w-[600px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(0,255,148,0.03) 0%, transparent 68%)" }} />
-
-      <div className="relative z-10 mx-auto max-w-2xl px-4 py-12">
-
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* ── Header ────────────────────────────────────────────────────── */}
         <header className="mb-10">
           <div className="flex items-start justify-between">
-
-            {/* Title */}
             <div>
               <div className="mb-1 flex items-center gap-2.5">
-                <Zap className="h-5 w-5 text-cyan-400" style={{ filter: "drop-shadow(0 0 7px #00d9ff)" }} />
+                <Leaf className="h-5 w-5 text-primary" />
                 <h1
-                  className="text-2xl font-black tracking-[0.25em] text-cyan-400 glow-cyan animate-flicker select-none"
-                  style={{ fontFamily: "var(--font-orbitron)" }}
+                  className="text-2xl font-bold tracking-tight text-foreground"
+                  style={{ fontFamily: "var(--font-fraunces)" }}
                 >
-                  QUANTUM TASKS
+                  Garden Tasks
                 </h1>
               </div>
-              <p className="ml-8 text-[9px] tracking-[0.35em] text-muted-foreground">
-                NEURAL TASK MANAGEMENT SYSTEM v2.0
+              <p className="ml-[30px] text-sm text-muted-foreground">
+                Tend your to-dos with care
               </p>
             </div>
 
-            {/* Status panel */}
-            <div className="flex flex-col items-end gap-1.5">
-              {/* System online */}
-              <div className="flex items-center gap-2">
-                <span className="animate-pulse-dot h-2 w-2 rounded-full bg-emerald-400"
-                  style={{ boxShadow: "0 0 7px #34d399" }} />
-                <span className="text-[9px] tracking-[0.3em] text-emerald-400">SYSTEM ONLINE</span>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end gap-1">
+                <ApiStatusBadge status={apiStatus} />
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>{clock}</span>
+                </div>
               </div>
-
-              {/* API status */}
-              <ApiStatusBadge status={apiStatus} />
-
-              {/* Clock */}
-              <div className="flex items-center gap-1.5 text-[10px] tracking-wider text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span style={{ fontFamily: "var(--font-space-mono)" }}>{clock} UTC</span>
-              </div>
+              <ThemeToggle />
             </div>
           </div>
 
           {/* API URL bar */}
-          <div
-            className="mt-3 flex items-center gap-2 rounded px-3 py-1.5"
-            style={{
-              background: "rgba(0,217,255,0.025)",
-              border: "1px solid rgba(0,217,255,0.09)",
-            }}
-          >
-            <Server className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-[9px] tracking-widest text-muted-foreground">BACKEND</span>
-            <span
-              className="text-[9px] tracking-wider"
-              style={{
-                fontFamily: "var(--font-space-mono)",
-                color: apiStatus === "online" ? "#34d399" : apiStatus === "offline" ? "#f87171" : "#fb923c",
-              }}
-            >
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+            <Server className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs text-muted-foreground">Backend</span>
+            <span className={cn(
+              "text-xs font-medium",
+              apiStatus === "online" ? "text-emerald-600 dark:text-emerald-400" :
+              apiStatus === "offline" ? "text-red-600 dark:text-red-400" :
+              "text-amber-600 dark:text-amber-400"
+            )}>
               {API_URL}
             </span>
-            <div className="ml-auto text-[9px] tracking-widest text-muted-foreground">
-              {apiStatus === "offline" ? "⊘ UNREACHABLE" : apiStatus === "connecting" ? "… PROBING" : "✓ REACHABLE"}
-            </div>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {apiStatus === "offline" ? "Unreachable" : apiStatus === "connecting" ? "Probing..." : "Connected"}
+            </span>
           </div>
 
-          {/* Separator */}
-          <div className="mt-4 h-px"
-            style={{ background: "linear-gradient(90deg, rgba(0,217,255,0.5), rgba(0,217,255,0.12) 60%, transparent)" }} />
+          <div className="mt-5 h-px bg-border" />
         </header>
 
-        {/* ── Stats ───────────────────────────────────────────────────────── */}
+        {/* ── Stats ─────────────────────────────────────────────────────── */}
         <div className="mb-6 grid grid-cols-3 gap-3">
-          <StatCard label="TOTAL"  value={todos.length}   color="#22d3ee" borderColor="rgba(34,211,238,0.18)"  shadowColor="rgba(34,211,238,0.07)"  icon={<LayoutList className="h-4 w-4 text-cyan-400"    />} />
-          <StatCard label="ACTIVE" value={activeCount}    color="#fb923c" borderColor="rgba(251,146,60,0.18)"  shadowColor="rgba(251,146,60,0.07)"  icon={<ListTodo   className="h-4 w-4 text-orange-400"  />} />
-          <StatCard label="DONE"   value={completedCount} color="#34d399" borderColor="rgba(52,211,153,0.18)"  shadowColor="rgba(52,211,153,0.07)"  icon={<CheckCheck className="h-4 w-4 text-emerald-400" />} />
+          <StatCard label="Total"  value={todos.length}   icon={<LayoutList className="h-4 w-4" />} />
+          <StatCard label="Active" value={activeCount}    icon={<ListTodo   className="h-4 w-4" />} />
+          <StatCard label="Done"   value={completedCount} icon={<CheckCheck className="h-4 w-4" />} />
         </div>
 
-        {/* ── Progress bar ─────────────────────────────────────────────────── */}
+        {/* ── Progress bar ───────────────────────────────────────────────── */}
         <div className="mb-7">
           <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="h-3 w-3 text-cyan-400" />
-              <span className="text-[9px] tracking-[0.3em] text-muted-foreground">MISSION PROGRESS</span>
-            </div>
+            <span className="text-xs font-medium text-muted-foreground">Progress</span>
             <span
-              className="text-sm font-bold text-cyan-400"
-              style={{ fontFamily: "var(--font-orbitron)", textShadow: "0 0 10px rgba(0,217,255,0.7)" }}
+              className="text-sm font-bold text-primary"
+              style={{ fontFamily: "var(--font-fraunces)" }}
             >
               {progress}%
             </span>
           </div>
-          <div
-            className="h-2 overflow-hidden rounded-full"
-            style={{ background: "rgba(0,217,255,0.07)", border: "1px solid rgba(0,217,255,0.13)" }}
-          >
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full transition-all duration-700 ease-out animate-progress-glow"
-              style={{ width: `${progress}%`, background: "linear-gradient(90deg, #00d9ff, #00ff94)" }}
+              className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        {/* ── Input area ───────────────────────────────────────────────────── */}
-        <div
-          className="mb-6 flex gap-2 rounded p-3"
-          style={{
-            background: "rgba(0,217,255,0.025)",
-            border: "1px solid rgba(0,217,255,0.13)",
-            boxShadow: "inset 0 0 30px rgba(0,217,255,0.015)",
-          }}
-        >
+        {/* ── Input area ─────────────────────────────────────────────────── */}
+        <div className="mb-6 flex gap-2 rounded-lg border border-border bg-card p-3">
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTodo()}
-            placeholder="ENTER NEW TASK..."
-            className="flex-1 border-0 bg-transparent text-sm tracking-wide placeholder:tracking-[0.2em] placeholder:text-muted-foreground/40 focus-visible:ring-0 focus-visible:ring-offset-0"
-            style={{ fontFamily: "var(--font-space-mono)" }}
+            placeholder="What needs tending?"
+            className="flex-1 border-0 bg-transparent text-sm placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
 
           <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
             <SelectTrigger
-              className="w-[120px] border text-[11px] tracking-wider focus:ring-0"
-              style={{
-                fontFamily: "var(--font-space-mono)",
-                background: "rgba(0,217,255,0.04)",
-                borderColor: "rgba(0,217,255,0.18)",
-                color: P[priority].bar,
-              }}
+              className="w-[110px] text-xs font-medium"
+              style={{ color: P[priority].color }}
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent style={{ background: "#07080f", border: "1px solid rgba(0,217,255,0.18)", fontFamily: "var(--font-space-mono)" }}>
+            <SelectContent className="bg-popover border-border">
               {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as Priority[]).map((p) => (
-                <SelectItem key={p} value={p} className="text-[11px] tracking-wider cursor-pointer" style={{ color: P[p].bar }}>
-                  {p}
+                <SelectItem key={p} value={p} className="text-xs font-medium cursor-pointer" style={{ color: P[p].color }}>
+                  {P[p].label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -422,82 +354,63 @@ export default function TodoApp() {
           <button
             onClick={addTodo}
             disabled={!input.trim()}
-            className="flex items-center gap-1.5 rounded px-4 text-[11px] tracking-[0.2em] transition-all duration-200 disabled:cursor-not-allowed"
-            style={{
-              fontFamily: "var(--font-orbitron)",
-              color:      input.trim() ? "#00d9ff" : "rgba(0,217,255,0.3)",
-              background: input.trim() ? "rgba(0,217,255,0.12)" : "rgba(0,217,255,0.03)",
-              border:     `1px solid ${input.trim() ? "rgba(0,217,255,0.38)" : "rgba(0,217,255,0.1)"}`,
-              boxShadow:  input.trim() ? "0 0 14px rgba(0,217,255,0.18)" : "none",
-            }}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Plus className="h-4 w-4" />
-            ADD
+            Add
           </button>
         </div>
 
-        {/* ── Filter tabs ──────────────────────────────────────────────────── */}
-        <div className="mb-5 flex items-center gap-1.5">
+        {/* ── Filter tabs ────────────────────────────────────────────────── */}
+        <div className="mb-5 flex items-center gap-1">
           {(["ALL", "ACTIVE", "COMPLETED"] as FilterType[]).map((f) => {
             const isActive = filter === f;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className="rounded px-4 py-1.5 text-[9px] tracking-[0.3em] transition-all duration-200"
-                style={{
-                  fontFamily: "var(--font-orbitron)",
-                  color:      isActive ? "#00d9ff" : "rgba(100,130,155,1)",
-                  background: isActive ? "rgba(0,217,255,0.08)" : "transparent",
-                  border:     `1px solid ${isActive ? "rgba(0,217,255,0.32)" : "rgba(0,217,255,0.07)"}`,
-                  boxShadow:  isActive ? "0 0 12px rgba(0,217,255,0.13)" : "none",
-                }}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent",
+                )}
               >
-                {f}
+                {f.charAt(0) + f.slice(1).toLowerCase()}
               </button>
             );
           })}
-          <span className="ml-auto text-[9px] tracking-widest text-muted-foreground">
-            {visible.length} RECORD{visible.length !== 1 ? "S" : ""}
+          <span className="ml-auto text-xs text-muted-foreground">
+            {visible.length} {visible.length === 1 ? "task" : "tasks"}
           </span>
         </div>
 
-        {/* ── Todo list ────────────────────────────────────────────────────── */}
+        {/* ── Todo list ──────────────────────────────────────────────────── */}
         <div className="space-y-2">
 
-          {/* Loading skeleton */}
           {loading && <LoadingSkeleton />}
 
-          {/* Offline / empty states */}
           {!loading && apiStatus === "offline" && backendTodos.length === 0 && (
-            <div
-              className="rounded py-12 text-center"
-              style={{ border: "1px solid rgba(248,113,113,0.12)", background: "rgba(248,113,113,0.02)" }}
-            >
-              <WifiOff className="mx-auto mb-3 h-6 w-6 opacity-20" style={{ color: "#f87171" }} />
-              <p className="text-[10px] tracking-[0.3em] text-muted-foreground">BACKEND UNREACHABLE</p>
-              <p className="mt-1 text-[9px] tracking-wider" style={{ color: "#f87171", opacity: 0.6 }}>
-                {API_URL}
-              </p>
+            <div className="rounded-lg border border-destructive/20 bg-destructive/5 py-12 text-center">
+              <WifiOff className="mx-auto mb-3 h-6 w-6 text-destructive/40" />
+              <p className="text-sm text-muted-foreground">Backend unreachable</p>
+              <p className="mt-1 text-xs text-destructive/60">{API_URL}</p>
             </div>
           )}
 
           {!loading && !visible.length && (apiStatus !== "offline" || backendTodos.length > 0) && (
-            <div
-              className="rounded py-16 text-center"
-              style={{ border: "1px solid rgba(0,217,255,0.07)", background: "rgba(0,217,255,0.015)" }}
-            >
-              <div className="mb-3 select-none text-3xl opacity-15" style={{ color: "#00d9ff" }}>◈</div>
-              <p className="text-[10px] tracking-[0.35em] text-muted-foreground">NO TASKS IN DATABASE</p>
+            <div className="rounded-lg border border-border bg-card py-16 text-center">
+              <Leaf className="mx-auto mb-3 h-8 w-8 text-primary/20" />
+              <p className="text-sm text-muted-foreground">
+                {filter === "COMPLETED" ? "Nothing completed yet" : filter === "ACTIVE" ? "All done!" : "Plant your first task"}
+              </p>
             </div>
           )}
 
-          {/* Todo items */}
           {!loading && visible.map((todo, idx) => (
             <TodoItem
               key={todo.id}
               todo={todo}
-              cfg={P[todo.priority]}
               index={idx}
               onToggle={toggleTodo}
               onDelete={(id) => deleteTodo(id, todo.backendId)}
@@ -505,16 +418,14 @@ export default function TodoApp() {
           ))}
         </div>
 
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
+        {/* ── Footer ────────────────────────────────────────────────────── */}
         {!loading && todos.length > 0 && (
           <div className="mt-8 flex items-center gap-4">
-            <div className="h-px flex-1"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(0,217,255,0.1))" }} />
-            <span className="text-[9px] tracking-[0.3em] text-muted-foreground">
-              {activeCount} TASK{activeCount !== 1 ? "S" : ""} REMAINING
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">
+              {activeCount} {activeCount === 1 ? "task" : "tasks"} remaining
             </span>
-            <div className="h-px flex-1"
-              style={{ background: "linear-gradient(90deg, rgba(0,217,255,0.1), transparent)" }} />
+            <div className="h-px flex-1 bg-border" />
           </div>
         )}
       </div>
@@ -525,117 +436,75 @@ export default function TodoApp() {
 // ─── TodoItem ─────────────────────────────────────────────────────────────────
 
 function TodoItem({
-  todo, cfg, index, onToggle, onDelete,
+  todo, index, onToggle, onDelete,
 }: {
   todo: Todo;
-  cfg: (typeof P)[Priority];
   index: number;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const [hovered, setHovered] = useState(false);
-
-  const borderColor = hovered && !todo.completed
-    ? cfg.card.hoverBorder
-    : todo.completed ? "rgba(52,211,153,0.11)" : "rgba(0,217,255,0.09)";
+  const pcfg = P[todo.priority];
 
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-3 overflow-hidden rounded p-3 transition-all duration-300 animate-slide-in-up",
+        "group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/20 animate-fade-in-up",
         `delay-${Math.min(index, 9)}`,
+        todo.completed && "opacity-60",
       )}
-      style={{
-        background:   todo.completed ? "rgba(52,211,153,0.025)" : "rgba(7,8,15,0.85)",
-        border:       `1px solid ${borderColor}`,
-        boxShadow:    hovered && !todo.completed ? cfg.card.hoverShadow : "none",
-        opacity:      todo.completed ? 0.6 : 1,
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
-      {/* Priority bar */}
-      <div
-        className="absolute inset-y-0 left-0 w-[3px] rounded-l"
-        style={{ background: cfg.bar, boxShadow: `0 0 10px ${cfg.bar}`, opacity: todo.completed ? 0.35 : 0.85 }}
-      />
-
       {/* Checkbox */}
       <button
         onClick={() => onToggle(todo.id)}
-        className="ml-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300"
-        style={{
-          border:     `1.5px solid ${todo.completed ? "#34d399" : "rgba(0,217,255,0.35)"}`,
-          background: todo.completed ? "rgba(52,211,153,0.15)" : "transparent",
-          boxShadow:  todo.completed ? "0 0 9px rgba(52,211,153,0.45)" : "none",
-        }}
+        className={cn(
+          "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          todo.completed
+            ? "border-primary bg-primary/15"
+            : "border-muted-foreground/30 hover:border-primary/60",
+        )}
         aria-label={todo.completed ? "Mark incomplete" : "Mark complete"}
       >
         {todo.completed && (
-          <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none" style={{ filter: "drop-shadow(0 0 3px #34d399)" }}>
-            <path d="M1.5 5l2.5 2.5 5-5" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg className="h-2.5 w-2.5" viewBox="0 0 10 10" fill="none">
+            <path d="M1.5 5l2.5 2.5 5-5" stroke="currentColor" className="text-primary" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </button>
 
-      {/* Priority dot */}
-      <div
-        className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-        style={{ background: cfg.dot.bg, boxShadow: cfg.dot.glow, opacity: todo.completed ? 0.35 : 1 }}
-      />
-
       {/* Task text */}
       <span
         className={cn(
-          "flex-1 text-sm tracking-wide transition-all duration-300",
+          "flex-1 text-sm transition-colors",
           todo.completed ? "line-through text-muted-foreground" : "text-foreground",
         )}
-        style={{ fontFamily: "var(--font-space-mono)" }}
       >
         {todo.task}
       </span>
 
-      {/* Backend ID badge */}
-      <span
-        className="flex-shrink-0 text-[8px] tracking-widest text-muted-foreground"
-        style={{ fontFamily: "var(--font-space-mono)", opacity: 0.4 }}
-      >
+      {/* Backend ID */}
+      <span className="flex-shrink-0 text-[10px] text-muted-foreground/40">
         #{todo.backendId}
       </span>
 
       {/* Priority badge */}
       <span
-        className="flex-shrink-0 rounded px-2 py-0.5 text-[9px] tracking-[0.2em]"
-        style={{
-          fontFamily: "var(--font-orbitron)",
-          color:      cfg.badge.color,
-          border:     `1px solid ${cfg.badge.border}`,
-          background: cfg.badge.bg,
-        }}
+        className={cn(
+          "flex-shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-medium",
+          pcfg.bgClass,
+          pcfg.borderClass,
+        )}
+        style={{ color: pcfg.color }}
       >
-        {todo.priority.slice(0, 3)}
+        {pcfg.label}
       </span>
 
       {/* Delete */}
       <button
         onClick={() => onDelete(todo.id)}
-        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded opacity-0 transition-all duration-200 group-hover:opacity-100"
-        style={{ color: "rgba(248,113,113,0.55)", border: "1px solid transparent" }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color       = "#f87171";
-          e.currentTarget.style.borderColor = "rgba(248,113,113,0.28)";
-          e.currentTarget.style.background  = "rgba(248,113,113,0.08)";
-          e.currentTarget.style.boxShadow   = "0 0 8px rgba(248,113,113,0.2)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color       = "rgba(248,113,113,0.55)";
-          e.currentTarget.style.borderColor = "transparent";
-          e.currentTarget.style.background  = "transparent";
-          e.currentTarget.style.boxShadow   = "none";
-        }}
+        className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted-foreground/40 opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
         aria-label="Delete task"
       >
-        <Trash2 className="h-3 w-3" />
+        <Trash2 className="h-3.5 w-3.5" />
       </button>
     </div>
   );
